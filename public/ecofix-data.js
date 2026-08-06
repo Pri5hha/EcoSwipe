@@ -1,4 +1,4 @@
-window.ECOFIX_DATA = (() => {
+(function (root) {
   const scenarios = {
     monday: {
       day_of_week: 'monday',
@@ -226,5 +226,14 @@ window.ECOFIX_DATA = (() => {
     };
   }
 
-  return { scenarios, providers, providerTagMap, scenarioTagMap, newUser, seedUsers };
-})();
+  const ECOFIX_DATA = { scenarios, providers, providerTagMap, scenarioTagMap, newUser, seedUsers };
+
+  // Dual export: browser classic-script global (unchanged) + Node `require()` for server-side
+  // reuse (e.g. computing per-scenario difficulty from the same fix_options as the client).
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ECOFIX_DATA;
+  }
+  if (root) {
+    root.ECOFIX_DATA = ECOFIX_DATA;
+  }
+})(typeof window !== 'undefined' ? window : undefined);

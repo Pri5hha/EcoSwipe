@@ -2,7 +2,7 @@ const { useEffect, useMemo, useRef, useState } = React;
 
 const TOKEN_LIMIT = 3;
 const BUDGET_LIMIT = 500;
-const ANALYSIS_SECONDS = 60;
+const ANALYSIS_SECONDS = 30;
 const FAST_SECONDS = 30;
 const LOCAL_KEY = 'ecofix_local_db_v2';
 const TZ = 'Asia/Kolkata';

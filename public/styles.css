@@ -1731,6 +1731,8 @@ textarea {
   border-radius: inherit;
   width: var(--w, 0%);
   background: linear-gradient(90deg, #08d9d6, #66f1d3, #4e8cff);
+  background-size: 160% 100%;
+  animation: gradientFlow 7s ease-in-out infinite;
   transition: width 0.55s ease;
 }
 
@@ -1995,12 +1997,16 @@ textarea {
   font-size: 1rem;
 }
 
-.treemap-block.tone-1 { background: linear-gradient(140deg, rgba(8, 217, 214, 0.34), rgba(3, 71, 98, 0.48)); }
-.treemap-block.tone-2 { background: linear-gradient(140deg, rgba(255, 107, 53, 0.34), rgba(85, 30, 78, 0.45)); }
-.treemap-block.tone-3 { background: linear-gradient(140deg, rgba(88, 255, 135, 0.32), rgba(25, 65, 83, 0.46)); }
-.treemap-block.tone-4 { background: linear-gradient(140deg, rgba(94, 163, 255, 0.32), rgba(41, 49, 103, 0.46)); }
-.treemap-block.tone-5 { background: linear-gradient(140deg, rgba(255, 183, 77, 0.32), rgba(103, 56, 48, 0.46)); }
-.treemap-block.tone-6 { background: linear-gradient(140deg, rgba(225, 140, 255, 0.28), rgba(55, 46, 110, 0.45)); }
+.treemap-block {
+  background-size: 160% 160%;
+  animation: gradientFlow 7s ease-in-out infinite;
+}
+.treemap-block.tone-1 { background-image: linear-gradient(140deg, rgba(8, 217, 214, 0.34), rgba(3, 71, 98, 0.48)); }
+.treemap-block.tone-2 { background-image: linear-gradient(140deg, rgba(255, 107, 53, 0.34), rgba(85, 30, 78, 0.45)); }
+.treemap-block.tone-3 { background-image: linear-gradient(140deg, rgba(88, 255, 135, 0.32), rgba(25, 65, 83, 0.46)); }
+.treemap-block.tone-4 { background-image: linear-gradient(140deg, rgba(94, 163, 255, 0.32), rgba(41, 49, 103, 0.46)); }
+.treemap-block.tone-5 { background-image: linear-gradient(140deg, rgba(255, 183, 77, 0.32), rgba(103, 56, 48, 0.46)); }
+.treemap-block.tone-6 { background-image: linear-gradient(140deg, rgba(225, 140, 255, 0.28), rgba(55, 46, 110, 0.45)); }
 
 .funnel-kpis {
   display: grid;
@@ -2726,6 +2732,8 @@ details.analytics-fold > .bundle-list::-webkit-scrollbar-thumb {
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(130deg, var(--accent-a), var(--accent-c));
+  background-size: 160% 100%;
+  animation: gradientFlow 7s ease-in-out infinite;
 }
 
 .provider-rich-economics {
@@ -2745,6 +2753,31 @@ details.analytics-fold > .bundle-list::-webkit-scrollbar-thumb {
   height: 4px;
   border-radius: 999px;
   background: linear-gradient(130deg, rgba(255, 107, 53, 0.88), rgba(8, 217, 214, 0.86));
+  background-size: 160% 100%;
+  animation: gradientFlow 7s ease-in-out infinite;
+}
+
+/* Shared subtle "living gradient" — used on the Provider Scorecard and Visual Analytics
+   fill bars/tiles. Pair any element with background-size: 160%+ and this animation. */
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .provider-track span b,
+  .provider-rich-economics i,
+  .flow-meter i,
+  .treemap-block {
+    animation: none;
+  }
 }
 
 .benchmark-scenario-note {

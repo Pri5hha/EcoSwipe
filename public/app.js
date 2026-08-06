@@ -1103,8 +1103,14 @@ function drawBar(canvas, labels, values, chartTitle, color) {
   const safeValues = Array.isArray(values) ? values : [];
   const max = Math.max(1, ...safeValues, 0);
   const palette = color || withAlpha(cssVars().a, 0.88);
+  const reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-  animateChart(canvas, (progress) => {
+  const previousHandle = chartAnimationHandles.get(canvas.id);
+  if (previousHandle) {
+    cancelAnimationFrame(previousHandle);
+  }
+
+  function render(progress, phase) {
     const { ctx, width, height } = chartCtx(canvas);
     const vars = cssVars();
     drawChartSurface(ctx, width, height, vars);
@@ -1128,12 +1134,20 @@ function drawBar(canvas, labels, values, chartTitle, color) {
       const drawnBarH = Math.max(barH, 2);
       const y = baseY - drawnBarH;
 
+      // Base top-to-bottom gradient, plus a faint highlight band that drifts up and down the
+      // bar over time (phase-offset per bar so they don't pulse in lockstep) for a "living" fill.
+      // Stays within the bar's own color (palette) throughout — mixing in the theme accent here
+      // clashed hard whenever a chart's color differs from the accent hue (e.g. Category ROI).
+      const shimmerCenter = 0.5 + 0.22 * Math.sin(phase * Math.PI * 2 + i * 0.7);
       const barGradient = ctx.createLinearGradient(0, y, 0, baseY);
-      barGradient.addColorStop(0, withAlpha(vars.c, 0.95));
-      barGradient.addColorStop(1, withAlpha(palette, 0.68));
+      barGradient.addColorStop(0, withAlpha(palette, 0.92));
+      barGradient.addColorStop(clampNum(shimmerCenter - 0.1, 0, 1), withAlpha(palette, 0.7));
+      barGradient.addColorStop(clampNum(shimmerCenter, 0.05, 0.95), withAlpha('#ffffff', 0.1));
+      barGradient.addColorStop(clampNum(shimmerCenter + 0.1, 0, 1), withAlpha(palette, 0.7));
+      barGradient.addColorStop(1, withAlpha(palette, 0.6));
       ctx.fillStyle = barGradient;
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = withAlpha(vars.c, 0.28);
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = withAlpha(palette, 0.2);
       roundedBar(ctx, x, y, barWidth, drawnBarH, 8);
       ctx.fill();
       ctx.shadowBlur = 0;
@@ -1178,7 +1192,33 @@ function drawBar(canvas, labels, values, chartTitle, color) {
     });
 
     setChartPayload(canvas, { type: 'point', items: points });
-  });
+  }
+
+  const start = performance.now();
+  const growDuration = 560;
+  let lastShimmerPaint = 0;
+
+  const step = (now) => {
+    const growT = Math.min(1, (now - start) / growDuration);
+    const progress = 1 - (1 - growT) ** 3;
+    const settled = growT >= 1;
+    const shouldPaint = !settled || now - lastShimmerPaint >= 70; // ~14fps once settled — cheap to keep running
+
+    if (shouldPaint) {
+      lastShimmerPaint = now;
+      render(progress, reducedMotion ? 0.5 : now / 7000);
+    }
+
+    if (settled && reducedMotion) {
+      chartAnimationHandles.delete(canvas.id);
+      return;
+    }
+    const id = requestAnimationFrame(step);
+    chartAnimationHandles.set(canvas.id, id);
+  };
+
+  const id = requestAnimationFrame(step);
+  chartAnimationHandles.set(canvas.id, id);
 }
 
 function drawLine(canvas, labels, values, chartTitle, color) {
@@ -1454,7 +1494,7 @@ function drawCharts(charts) {
   }
 
   if (state.insightMode === 'providers') {
-    drawBar(els.demandChart, charts.providerLabels || [], arrayOr(charts.providerRevenueData, (charts.providerLabels || []).length), 'Provider Revenue ($)', 'rgba(255, 125, 193, 0.9)');
+    drawBar(els.demandChart, charts.providerLabels || [], arrayOr(charts.providerJobsData, (charts.providerLabels || []).length), 'Provider Job Volume', 'rgba(255, 125, 193, 0.9)');
     drawLine(els.sustainChart, charts.providerLabels || [], arrayOr(charts.providerRatingData, (charts.providerLabels || []).length), 'Provider Sustainability Score', '#65f0d0');
     drawBar(els.categoryChart, charts.categoryLabels || [], arrayOr(charts.categoryRoiData, (charts.categoryLabels || []).length), 'Category ROI (%)', 'rgba(118, 190, 255, 0.9)');
     drawBar(els.spendChart, charts.providerLabels || [], arrayOr(charts.providerRatingData, (charts.providerLabels || []).length), 'Provider Performance', 'rgba(255, 205, 95, 0.9)');
@@ -2341,7 +2381,6 @@ function providerSortLabel(sortKey) {
   const labels = {
     score: 'Composite score',
     reliabilityScore: 'Reliability',
-    revenue: 'Revenue',
     jobs: 'Jobs completed',
     carbonSavedKg: 'Carbon saved',
     sustainability: 'Sustainability'
@@ -2389,7 +2428,6 @@ function renderProviderRatings() {
     return;
   }
 
-  const maxRevenue = Math.max(1, ...filtered.map((provider) => Number(provider.revenue || 0)));
   const maxJobs = Math.max(1, ...filtered.map((provider) => Number(provider.jobs || 0)));
   const maxCarbon = Math.max(1, ...filtered.map((provider) => Number(provider.carbonSavedKg || 0)));
   const trustByProvider = new Map(
@@ -2404,10 +2442,8 @@ function renderProviderRatings() {
       const score = clampValue(provider.score, 0, 100);
       const reliability = clampValue(provider.reliabilityScore, 0, 100);
       const sustainability = clampValue(provider.sustainability, 0, 100);
-      const revenue = Number(provider.revenue || 0);
       const jobs = Number(provider.jobs || 0);
       const carbon = Number(provider.carbonSavedKg || 0);
-      const revenuePct = clampValue((revenue / maxRevenue) * 100, 0, 100);
       const jobsPct = clampValue((jobs / maxJobs) * 100, 0, 100);
       const carbonPct = clampValue((carbon / maxCarbon) * 100, 0, 100);
       const trust = trustByProvider.get(String(provider.provider));
@@ -2437,7 +2473,6 @@ function renderProviderRatings() {
             <div class="provider-track"><small>Sustainability</small><span><b style="width:${sustainability}%"></b></span></div>
           </div>
           <div class="provider-rich-economics">
-            <small>Revenue ${money(revenue)} <i style="--width:${revenuePct}%"></i></small>
             <small>Jobs ${jobs} <i style="--width:${jobsPct}%"></i></small>
             <small>CO2 ${carbon.toFixed(1)}kg <i style="--width:${carbonPct}%"></i></small>
           </div>
@@ -3423,6 +3458,11 @@ function renderIntentPlan() {
     return;
   }
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const slotOptions = (state.timeSlots.length ? state.timeSlots : ['9:00-10:00', '10:00-11:00', '11:00-12:00'])
+    .map((slot) => `<option value="${slot}">${slot}</option>`)
+    .join('');
+
   els.intentPlanResult.innerHTML = `
     <article class="bundle-item">
       <strong>Budget ${money(plan.budget.lower)} - ${money(plan.budget.upper)}</strong>
@@ -3430,6 +3470,14 @@ function renderIntentPlan() {
       ${plan.taskBreakdown
         .map((task) => `<small>${task.order}. ${sanitize(task.title)} | ${money(task.estimatedCost)} | ${task.estimatedMinutes} min</small>`)
         .join('')}
+      <label>
+        Date
+        <input type="date" id="planTargetDate" value="${sanitize(plan.suggestedCircle.targetDate)}" min="${todayIso}" required />
+      </label>
+      <label>
+        Time
+        <select id="planSlot">${slotOptions}</select>
+      </label>
       <div class="offer-actions">
         <button class="btn" id="createCircleFromPlanBtn" type="button">Create Circle</button>
         <button class="btn btn-like" id="bookPlanPackageBtn" type="button">Book Package + Pay</button>
@@ -3993,13 +4041,18 @@ function wireEvents() {
     }
     try {
       const plan = state.latestIntentPlan;
+      const planDateInput = document.getElementById('planTargetDate');
+      const planSlotInput = document.getElementById('planSlot');
+      const chosenTargetDate = planDateInput?.value || plan.suggestedCircle.targetDate;
+      const chosenSlot = planSlotInput?.value || state.timeSlots[0] || '9:00-10:00';
+
       if (btn) {
         await api('/api/circles', {
           method: 'POST',
           body: JSON.stringify({
             title: plan.suggestedCircle.title,
             objective: plan.intent,
-            targetDate: plan.suggestedCircle.targetDate,
+            targetDate: chosenTargetDate,
             services: plan.suggestedCircle.services,
             providers: plan.suggestedCircle.providers,
             budgetEstimate: plan.budget.baseline
@@ -4015,8 +4068,8 @@ function wireEvents() {
         body: JSON.stringify({
           title: plan.suggestedCircle.title,
           objective: plan.intent,
-          targetDate: plan.suggestedCircle.targetDate,
-          slot: state.timeSlots[0] || '9:00-10:00',
+          targetDate: chosenTargetDate,
+          slot: chosenSlot,
           serviceIds: (plan.suggestedCircle.services || []).slice(0, 8)
         })
       });

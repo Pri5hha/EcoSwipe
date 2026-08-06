@@ -148,6 +148,31 @@ db.exec(`
     FOREIGN KEY (circle_id) REFERENCES task_circles(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS providers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    price_per_hour REAL NOT NULL,
+    eco_rating INTEGER NOT NULL DEFAULT 0,
+    trust_score INTEGER NOT NULL DEFAULT 0,
+    region TEXT NOT NULL,
+    availability_slots TEXT NOT NULL DEFAULT '[]',
+    carbon_score REAL NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS agent_conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    session_id TEXT,
+    message TEXT,
+    role TEXT,
+    extracted_intent TEXT,
+    providers_returned TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS ecofix_sessions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

@@ -10,6 +10,8 @@ const { nanoid } = require('nanoid');
 const path = require('path');
 const db = require('./db');
 const { DEFAULT_CATEGORY_BENCHMARKS, DEFAULT_PROVIDER_EVIDENCE, loadCalibrationData } = require('./externalData');
+const createAgentRouter = require('./routes/agent');
+const ECOFIX_DATA = require('../public/ecofix-data.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -505,6 +507,59 @@ function bookingCarbonModel(service, booking = {}) {
   };
 }
 
+const providerUpsert = db.prepare(`
+  INSERT INTO providers (id, name, category, price_per_hour, eco_rating, trust_score, region, availability_slots, carbon_score, updated_at)
+  VALUES (@id, @name, @category, @pricePerHour, @ecoRating, @trustScore, @region, @availabilitySlots, @carbonScore, @updatedAt)
+  ON CONFLICT(id) DO UPDATE SET
+    name = excluded.name,
+    category = excluded.category,
+    price_per_hour = excluded.price_per_hour,
+    eco_rating = excluded.eco_rating,
+    trust_score = excluded.trust_score,
+    region = excluded.region,
+    availability_slots = excluded.availability_slots,
+    carbon_score = excluded.carbon_score,
+    updated_at = excluded.updated_at
+`);
+
+function computeProviderTrustScore(evidence) {
+  return Math.round(
+    clamp(evidence.onTimeRatePct * 0.4 + evidence.completionRatePct * 0.4 + evidence.verifiedLevel * 20 * 0.2, 0, 100)
+  );
+}
+
+function providerAvailabilitySlots(providerName) {
+  const seed = hashString(providerName);
+  const count = 3 + (seed % 3);
+  const startIndex = seed % TIME_SLOTS.length;
+  const slots = [];
+  for (let i = 0; i < count; i += 1) {
+    slots.push(TIME_SLOTS[(startIndex + i * 2) % TIME_SLOTS.length]);
+  }
+  return [...new Set(slots)];
+}
+
+// Keeps the `providers` table (queried by the booking agent) in sync with the calibrated
+// serviceCatalog + provider evidence data used throughout the rest of the app.
+function syncProvidersTable() {
+  const now = new Date().toISOString();
+  serviceCatalog.forEach((service) => {
+    const evidence = getProviderEvidence(service.provider);
+    providerUpsert.run({
+      id: service.id,
+      name: service.provider,
+      category: service.category,
+      pricePerHour: roundTo(service.price / Math.max(0.5, service.etaMinutes / 60), 2),
+      ecoRating: service.sustainabilityScore,
+      trustScore: computeProviderTrustScore(evidence),
+      region: regionFromSeed(service.provider),
+      availabilitySlots: JSON.stringify(providerAvailabilitySlots(service.provider)),
+      carbonScore: service.carbonSavedKg,
+      updatedAt: now
+    });
+  });
+}
+
 function calibrateServiceCatalog() {
   serviceCatalog.forEach((service) => {
     const benchmark = getCategoryBenchmark(service.category);
@@ -539,6 +594,8 @@ function calibrateServiceCatalog() {
       clamp(confidenceBase + evidence.verifiedLevel * 4 + evidence.completionRatePct * 0.08, 65, 98)
     );
   });
+
+  syncProvidersTable();
 }
 
 async function refreshCalibrationData() {
@@ -938,6 +995,27 @@ function buildMonthlySeries(bookings, months, valueFn) {
   return {
     labels: buckets.map((bucket) => bucket.label),
     data: series.map((value) => Number(value.toFixed(2)))
+  };
+}
+
+// Insight charts should never render months before May of the current cycle
+// (this May, or last May if we haven't reached it yet this year).
+function insightFloorKey(reference = new Date()) {
+  const floorYear = reference.getMonth() >= 4 ? reference.getFullYear() : reference.getFullYear() - 1;
+  return `${floorYear}-05`;
+}
+
+// Slices a set of month-aligned data arrays (all sharing the same `monthBuckets` positions)
+// so nothing before the May floor reaches the response.
+function trimInsightSeriesBeforeMay(monthBuckets, dataArrays) {
+  const floorKey = insightFloorKey();
+  let cutIndex = monthBuckets.findIndex((bucket) => bucket.key >= floorKey);
+  if (cutIndex === -1) {
+    cutIndex = monthBuckets.length;
+  }
+  return {
+    labels: monthBuckets.slice(cutIndex).map((bucket) => bucket.label),
+    data: dataArrays.map((arr) => (arr || []).slice(cutIndex))
   };
 }
 
@@ -1842,6 +1920,77 @@ function getActiveCouponForUser(userId) {
     .get(userId, nowIso);
 }
 
+// Per-scenario EcoFix unlock targets, derived from the same fix data + scoring formula the
+// client uses (public/ecofix.js: evalSelection/bestCombo), so the bar reflects each day's real
+// difficulty instead of one flat number. Computed once at startup.
+const ECOFIX_BUDGET_LIMIT = 500; // keep in sync with BUDGET_LIMIT in public/ecofix.js
+const ECOFIX_TOKEN_LIMIT = 3; // keep in sync with TOKEN_LIMIT in public/ecofix.js
+const ECOFIX_UNLOCK_RATIO = 0.85; // fraction of the day's true scoring ceiling required to unlock
+
+function ecofixCombos(fixOptions) {
+  const out = [];
+  for (let i = 0; i < fixOptions.length; i += 1) {
+    for (let j = i + 1; j < fixOptions.length; j += 1) {
+      for (let k = j + 1; k < fixOptions.length; k += 1) {
+        out.push([fixOptions[i], fixOptions[j], fixOptions[k]]);
+      }
+    }
+  }
+  return out;
+}
+
+// Mirrors evalSelection() in public/ecofix.js (base efficiency + root-cause + speed bonus),
+// with streak omitted so the target is a fixed per-day number, not per-player.
+function ecofixBaselineScore(fixes) {
+  const byId = new Map(fixes.map((f) => [f.id, f]));
+  const impactMap = new Map(
+    fixes.map((f) => [f.id, Number(f.impact || 0) * (1 - Number(f.hidden_penalty_factor || 0))])
+  );
+  fixes.forEach((fix) => {
+    if (fix.unlock_multiplier && byId.has(fix.unlock_multiplier)) {
+      impactMap.set(fix.unlock_multiplier, (impactMap.get(fix.unlock_multiplier) || 0) * 1.25);
+    }
+  });
+  const spent = fixes.reduce((sum, fix) => sum + Number(fix.cost || 0), 0);
+  const totalImpact = [...impactMap.values()].reduce((sum, val) => sum + val, 0);
+  const base = spent > 0 ? (totalImpact / spent) * 100 : totalImpact * 10;
+  const root = fixes.some((f) => f.is_root_cause) ? base * 0.2 : 0;
+  const speed = base * 0.1; // ceiling assumes a fast (<=30s) pick, same as the client's bestCombo()
+  return base + root + speed;
+}
+
+function ecofixDayCeiling(dayKey) {
+  const puzzle = ECOFIX_DATA.scenarios?.[dayKey];
+  const fixOptions = puzzle?.fix_options || [];
+  let best = 0;
+  ecofixCombos(fixOptions).forEach((combo) => {
+    const cost = combo.reduce((sum, item) => sum + Number(item.cost || 0), 0);
+    if (cost > ECOFIX_BUDGET_LIMIT) {
+      return;
+    }
+    const score = ecofixBaselineScore(combo);
+    if (score > best) {
+      best = score;
+    }
+  });
+  return best;
+}
+
+// No lower floor beyond a trivial sanity clamp: a fixed floor could exceed a day's own
+// ceiling (some days' fix sets simply can't score as high as others) and make that day
+// mathematically unwinnable. The ratio alone already guarantees each target stays reachable.
+const ECOFIX_UNLOCK_TARGETS = Object.fromEntries(
+  DAY_KEYS.map((day) => [day, clamp(Math.round(ecofixDayCeiling(day) * ECOFIX_UNLOCK_RATIO), 10, 92)])
+);
+
+function ecofixUnlockTargetForDay(dayKey) {
+  return ECOFIX_UNLOCK_TARGETS[dayKey] || 65;
+}
+
+function currentEcofixDayKey() {
+  return DAY_KEYS[(new Date().getDay() + 6) % 7];
+}
+
 function getEcofixStatsForUser(userId, playedOn) {
   const anchorDay = String(playedOn || new Date().toISOString().slice(0, 10));
   const anchorDate = new Date(`${anchorDay}T00:00:00.000Z`);
@@ -1949,12 +2098,30 @@ function computeEcofixOfferProfile(user) {
   const randomGate = gateSeed % 100;
   const eligibilityThreshold = Math.round(clamp(18 + score * 0.58, 24, 82));
   const todayScore = Number(ecofixStats.todaySession?.finalScore || 0);
-  const ecofixQualified = Boolean(ecofixStats.todaySession && todayScore >= 60);
-  const eligible = ecofixQualified || (score >= 34 && randomGate < eligibilityThreshold);
+  // Target is per-scenario, not one flat number — see ecofixUnlockTargetForDay(). Use the
+  // scenario actually played today if there's a session, otherwise preview today's real target.
+  const todayUnlockTarget = ecofixUnlockTargetForDay(ecofixStats.todaySession?.scenarioDay || currentEcofixDayKey());
+  const ecofixQualified = Boolean(ecofixStats.todaySession && todayScore >= todayUnlockTarget);
+
+  // One EcoFix coupon per person per rolling 7 days, regardless of how many times you qualify.
+  const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const lastCouponRow = db
+    .prepare(
+      "SELECT redeemed_at AS redeemedAt FROM coupons WHERE user_id = ? AND source = 'ecofix' AND redeemed_at >= ? ORDER BY redeemed_at DESC LIMIT 1"
+    )
+    .get(userId, weekAgoIso);
+  const redeemedThisWeek = Boolean(lastCouponRow);
+  const nextEligibleAt = lastCouponRow
+    ? new Date(new Date(lastCouponRow.redeemedAt).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+
+  // Coupons are an EcoFix reward — you must have played today, cleared that day's own
+  // scoring bar, and not already claimed one in the past 7 days.
+  const eligible = ecofixQualified && !redeemedThisWeek;
 
   const discountSeed = hashString(`${userId}:${dayKey}:ecofix-discount`);
   const variableBoost = Math.round(clamp((score - 30) / 6, 0, 18));
-  const todayBoost = ecofixQualified ? Math.round(clamp((todayScore - 60) / 4, 0, 8)) : 0;
+  const todayBoost = ecofixQualified ? Math.round(clamp((todayScore - todayUnlockTarget) / 4, 0, 8)) : 0;
   const discountPct = Math.round(clamp(10 + variableBoost + todayBoost + (discountSeed % 7), 10, 40));
   const factors = [
     `Swipe activity: ${swipeCount}`,
@@ -1963,8 +2130,8 @@ function computeEcofixOfferProfile(user) {
     `Review participation: ${(reviewRate * 100).toFixed(0)}%`,
     `Eco priority: ${ecoPriority}`,
     ecofixStats.todaySession
-      ? `EcoFix today: ${todayScore} (${ecofixStats.todaySession.rootSelected ? 'root cause selected' : 'no root cause'})`
-      : 'EcoFix today: not played yet'
+      ? `EcoFix today: ${todayScore}/${todayUnlockTarget} (${ecofixStats.todaySession.rootSelected ? 'root cause selected' : 'no root cause'})`
+      : `EcoFix today: not played yet (target ${todayUnlockTarget})`
   ];
 
   return {
@@ -1977,6 +2144,9 @@ function computeEcofixOfferProfile(user) {
     ecofixQualified,
     playedToday: Boolean(ecofixStats.todaySession),
     todayScore,
+    todayUnlockTarget,
+    redeemedThisWeek,
+    nextEligibleAt,
     recentEcofixDays: ecofixStats.recentCount
   };
 }
@@ -2828,12 +2998,14 @@ app.post(
         suggestedDiscountPct: offerProfile.discountPct,
         playedToday: offerProfile.playedToday,
         todayScore: offerProfile.todayScore,
-        unlockScoreTarget: 60,
+        unlockScoreTarget: offerProfile.todayUnlockTarget,
         note: activeCoupon
           ? 'Active coupon already available. Use it in Payments.'
-          : offerProfile.eligible
-            ? 'Offer unlocked. Redeem your coupon from the home offer card.'
-            : `Not unlocked yet. Reach score 60+ in EcoFix today. Current: ${offerProfile.todayScore}.`
+          : offerProfile.redeemedThisWeek
+            ? `You've already claimed an EcoFix coupon this week. Next eligible: ${String(offerProfile.nextEligibleAt || '').slice(0, 10)}.`
+            : offerProfile.eligible
+              ? 'Offer unlocked. Redeem your coupon from the home offer card.'
+              : `Not unlocked yet. Reach score ${offerProfile.todayUnlockTarget}+ in EcoFix today (today's scenario). Current: ${offerProfile.todayScore}.`
       }
     });
   }
@@ -2874,17 +3046,21 @@ app.get('/api/offers/ecofix', authRequired, (req, res) => {
     ecofix: {
       playedToday: offerProfile.playedToday,
       todayScore: offerProfile.todayScore,
-      unlockScoreTarget: 60,
+      unlockScoreTarget: offerProfile.todayUnlockTarget,
       qualifiedToday: offerProfile.ecofixQualified,
       recentDays: offerProfile.recentEcofixDays
     },
+    redeemedThisWeek: offerProfile.redeemedThisWeek,
+    nextEligibleAt: offerProfile.nextEligibleAt,
     note: active
       ? 'Active coupon available. Apply it in Payments before it expires.'
-      : offerProfile.eligible
-        ? 'You are eligible for today\'s EcoFix offer.'
-        : offerProfile.playedToday
-          ? `Not unlocked yet. Reach score 60+ in EcoFix today (current: ${offerProfile.todayScore}).`
-          : `Unlock ${offerProfile.discountPct}% today by playing EcoFix and picking high-impact fixes.`
+      : offerProfile.redeemedThisWeek
+        ? `You've already claimed an EcoFix coupon this week. Next eligible: ${String(offerProfile.nextEligibleAt || '').slice(0, 10)}.`
+        : offerProfile.eligible
+          ? 'You are eligible for today\'s EcoFix offer.'
+          : offerProfile.playedToday
+            ? `Not unlocked yet. Reach score ${offerProfile.todayUnlockTarget}+ in EcoFix today (current: ${offerProfile.todayScore}).`
+            : `Unlock ${offerProfile.discountPct}% today by playing EcoFix and scoring ${offerProfile.todayUnlockTarget}+ (today's target).`
   });
 });
 
@@ -2895,8 +3071,15 @@ app.post('/api/offers/ecofix/redeem', authRequired, csrfRequired, (req, res) => 
   }
 
   const offerProfile = computeEcofixOfferProfile(req.user);
+  if (offerProfile.redeemedThisWeek) {
+    return res.status(409).json({
+      error: `You can only redeem one EcoFix coupon per week. Next eligible: ${String(offerProfile.nextEligibleAt || '').slice(0, 10)}.`
+    });
+  }
   if (!offerProfile.eligible) {
-    return res.status(403).json({ error: 'Offer is not unlocked yet for this account.' });
+    return res.status(403).json({
+      error: `Not unlocked yet — reach score ${offerProfile.todayUnlockTarget}+ in today's EcoFix scenario (current: ${offerProfile.todayScore}).`
+    });
   }
 
   const redeemedAt = new Date().toISOString();
@@ -4837,8 +5020,33 @@ app.get('/api/insights', authRequired, (req, res) => {
   const providerRatings = computeProviderStats().sort((a, b) => b.score - a.score);
   const topProviders = providerRatings.slice(0, 6);
   const providerLabels = topProviders.map((item) => item.provider);
-  const providerRevenueData = topProviders.map((item) => item.revenue);
+  // Revenue is a business metric, not something booking customers should see per-provider —
+  // job volume tells the same "how established is this provider" story without it.
+  const providerJobsData = topProviders.map((item) => item.jobs);
   const providerRatingData = topProviders.map((item) => item.score);
+
+  // spendSeries/savingsSeries/carbonSeries/timeSavedSeries/bookingCountSeries/repeatRateData
+  // all share the same month positions (same windowMonths, same request time) — trim them
+  // together so the insight charts never show anything before May.
+  const insightMonthBuckets = buildMonthBuckets(windowMonths);
+  const trimmedMonthlySeries = trimInsightSeriesBeforeMay(insightMonthBuckets, [
+    spendSeries.data,
+    avgSpendSeries.data,
+    savingsSeries.data,
+    carbonSeries.data,
+    timeSavedSeries.data,
+    bookingCountSeries.data,
+    repeatRateData
+  ]);
+  const [
+    trimmedSpendData,
+    trimmedAvgSpendData,
+    trimmedSavingsData,
+    trimmedCarbonData,
+    trimmedTimeSavedData,
+    trimmedBookingCountData,
+    trimmedRepeatRateData
+  ] = trimmedMonthlySeries.data;
 
   const yearlyCarbonSeries = buildMonthlySeries(bookingDetails, 12, (booking) => booking.carbonModel.carbonSavedKg);
   let streakMonths = 0;
@@ -4934,19 +5142,19 @@ app.get('/api/insights', authRequired, (req, res) => {
       demandLabels,
       demandData,
       sustainabilityData,
-      spendLabels: spendSeries.labels,
-      spendData: spendSeries.data,
-      avgSpendData: avgSpendSeries.data,
-      savingsData: savingsSeries.data,
-      carbonData: carbonSeries.data,
-      timeSavedData: timeSavedSeries.data,
-      bookingCountData: bookingCountSeries.data,
-      repeatRateData,
+      spendLabels: trimmedMonthlySeries.labels,
+      spendData: trimmedSpendData,
+      avgSpendData: trimmedAvgSpendData,
+      savingsData: trimmedSavingsData,
+      carbonData: trimmedCarbonData,
+      timeSavedData: trimmedTimeSavedData,
+      bookingCountData: trimmedBookingCountData,
+      repeatRateData: trimmedRepeatRateData,
       categoryLabels,
       categoryData,
       categoryRoiData,
       providerLabels,
-      providerRevenueData,
+      providerJobsData,
       providerRatingData
     },
     ledger,
@@ -5398,6 +5606,8 @@ app.get('/admin', (req, res) => {
 app.get('/ecofix', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'ecofix.html'));
 });
+
+app.use('/api/agent', createAgentRouter({ authRequired, csrfRequired }));
 
 app.get('*', (req, res) => {
   res.redirect('/');

@@ -74,6 +74,23 @@ db.exec(`
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS coupons (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    source TEXT NOT NULL DEFAULT 'ecofix',
+    discount_pct REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    redeemed_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    used_booking_id TEXT,
+    created_at TEXT NOT NULL,
+    meta_json TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (used_booking_id) REFERENCES bookings(id) ON DELETE SET NULL
+  );
+
   CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -85,6 +102,81 @@ db.exec(`
     created_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS user_goals (
+    user_id TEXT PRIMARY KEY,
+    monthly_carbon_goal REAL NOT NULL DEFAULT 25,
+    monthly_spend_goal REAL NOT NULL DEFAULT 250,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS task_circles (
+    id TEXT PRIMARY KEY,
+    owner_user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    objective TEXT NOT NULL DEFAULT '',
+    target_date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    services_json TEXT NOT NULL DEFAULT '[]',
+    providers_json TEXT NOT NULL DEFAULT '[]',
+    budget_estimate REAL NOT NULL DEFAULT 0,
+    timeline_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS task_circle_messages (
+    id TEXT PRIMARY KEY,
+    circle_id TEXT NOT NULL,
+    sender_user_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (circle_id) REFERENCES task_circles(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS task_circle_checklist (
+    id TEXT PRIMARY KEY,
+    circle_id TEXT NOT NULL,
+    item_text TEXT NOT NULL,
+    assigned_to TEXT NOT NULL DEFAULT '',
+    is_done INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (circle_id) REFERENCES task_circles(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS ecofix_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    played_on TEXT NOT NULL,
+    scenario_day TEXT NOT NULL,
+    final_score REAL NOT NULL DEFAULT 0,
+    base_score REAL NOT NULL DEFAULT 0,
+    root_bonus REAL NOT NULL DEFAULT 0,
+    speed_bonus REAL NOT NULL DEFAULT 0,
+    streak_bonus REAL NOT NULL DEFAULT 0,
+    root_selected INTEGER NOT NULL DEFAULT 0,
+    completed_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(user_id, played_on)
+  );
 `);
+
+function ensureColumn(tableName, columnName, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  const hasColumn = columns.some((column) => column.name === columnName);
+  if (!hasColumn) {
+    db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`).run();
+  }
+}
+
+ensureColumn('payments', 'base_amount', 'base_amount REAL NOT NULL DEFAULT 0');
+ensureColumn('payments', 'discount_code', "discount_code TEXT NOT NULL DEFAULT ''");
+ensureColumn('payments', 'discount_pct', 'discount_pct REAL NOT NULL DEFAULT 0');
+ensureColumn('payments', 'discount_amount', 'discount_amount REAL NOT NULL DEFAULT 0');
 
 module.exports = db;

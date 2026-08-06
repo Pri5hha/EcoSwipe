@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoSwipe | EcoFix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Unbounded:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="ecofix.css" />
+</head>
+<body>
+  <div class="fx-bg-orb fx-orb-a"></div>
+  <div class="fx-bg-orb fx-orb-b"></div>
+  <div class="fx-bg-grid"></div>
+  <div id="ecofixRoot">
+    <main class="fx-app">
+      <section class="fx-shell">
+        <article class="fx-card fx-card-glass fx-loading-card">
+          <div class="fx-spinner"></div>
+          <p>Loading EcoFix challenge...</p>
+        </article>
+      </section>
+    </main>
+  </div>
+  <script>
+    (function bootEcoFix() {
+      const root = document.getElementById('ecofixRoot');
+      const loadingText = root ? root.querySelector('p') : null;
+      function setStatus(message) {
+        if (loadingText) {
+          loadingText.textContent = message;
+        }
+      }
+      function fail(message) {
+        if (!root) return;
+        root.innerHTML = '<main class="fx-app"><section class="fx-shell"><article class="fx-card fx-card-solid"><h1>EcoFix</h1><p>' + message + '</p><p>Refresh with Ctrl + F5 and try again.</p><a class="fx-link-btn" href="/ecofix">Reload EcoFix</a></article></section></main>';
+      }
+
+      function loadScript(src) {
+        return new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = src;
+          s.async = false;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      async function loadFromAny(urls) {
+        let lastError = null;
+        for (const url of urls) {
+          try {
+            await loadScript(url);
+            return;
+          } catch (err) {
+            lastError = err;
+          }
+        }
+        throw lastError || new Error('Script load failed');
+      }
+
+      async function compileAndRunBabelScript(src) {
+        const response = await fetch(src, { credentials: 'same-origin' });
+        if (!response.ok) {
+          throw new Error(`Failed to load ${src}`);
+        }
+        const source = await response.text();
+        const transformed = window.Babel.transform(source, {
+          presets: [['react', { runtime: 'classic' }]],
+          sourceType: 'script'
+        }).code;
+        // eslint-disable-next-line no-new-func
+        new Function(transformed)();
+      }
+
+      (async () => {
+        try {
+          setStatus('Loading engine...');
+
+          // Firebase is optional for EcoFix. If blocked, local mode still works.
+          try {
+            await loadFromAny([
+              'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js'
+            ]);
+            await loadFromAny([
+              'https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js'
+            ]);
+          } catch (firebaseError) {
+            console.warn('EcoFix Firebase scripts unavailable. Continuing in local mode.', firebaseError);
+          }
+
+          setStatus('Loading React...');
+          await loadFromAny([
+            'https://unpkg.com/react@18/umd/react.production.min.js',
+            'https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js'
+          ]);
+          await loadFromAny([
+            'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+            'https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js'
+          ]);
+          await loadFromAny([
+            'https://unpkg.com/@babel/standalone/babel.min.js',
+            'https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js'
+          ]);
+
+          setStatus('Loading challenge data...');
+          await loadScript('ecofix-data.js');
+          setStatus('Starting challenge...');
+          await compileAndRunBabelScript('ecofix.js');
+        } catch (error) {
+          console.error('EcoFix boot error:', error);
+          fail(`EcoFix failed to load challenge. ${error && error.message ? error.message : 'Please retry.'}`);
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

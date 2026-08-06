@@ -26,6 +26,8 @@
       </div>
       <div class="top-actions">
         <span class="badge-chip">Impact-first Marketplace</span>
+        <a id="adminLink" href="/admin" class="btn btn-ghost hidden">Admin Console</a>
+        <a href="/ecofix" class="btn btn-ghost">Play EcoFix</a>
         <button id="logoutBtn" class="btn btn-ghost">Log Out</button>
       </div>
     </header>
@@ -44,20 +46,35 @@
 
       <section class="workspace">
         <article class="panel controls-panel">
-          <h3>Match Preferences</h3>
-          <label>
-            Eco Priority: <span id="ecoPriorityLabel">70</span>
+          <div class="pref-head">
+            <h3>Match Preferences</h3>
+            <span id="prefScoreBadge" class="pref-score-badge">Match 0</span>
+          </div>
+          <div id="prefSummary" class="pref-summary">
+            <span class="pref-chip">Ready</span>
+          </div>
+          <label class="slider-control">
+            <div class="slider-title">
+              <span>Eco Priority</span>
+              <strong id="ecoPriorityLabel">70</strong>
+            </div>
             <input id="ecoPriority" type="range" min="0" max="100" value="70" />
           </label>
-          <label>
-            Budget Cap: <span id="budgetLabel">$150</span>
+          <label class="slider-control">
+            <div class="slider-title">
+              <span>Budget Cap</span>
+              <strong id="budgetLabel">$150</strong>
+            </div>
             <input id="budgetCap" type="range" min="20" max="500" value="150" />
           </label>
-          <label class="toggle-row">
-            <span>Urgency Mode</span>
+          <label class="toggle-card">
+            <div>
+              <span>Urgency Mode</span>
+              <small>Prioritize faster ETA and near-term slots</small>
+            </div>
             <input id="urgencyMode" type="checkbox" />
           </label>
-          <label>
+          <label class="theme-control">
             Accent Theme
             <select id="accentTheme">
               <option value="sunset">Sunset Pulse</option>
@@ -66,11 +83,12 @@
               <option value="ember">Ember Drive</option>
             </select>
           </label>
-          <button id="savePrefsBtn" class="btn">Save Preferences</button>
+          <button id="savePrefsBtn" class="btn">Apply Preferences</button>
 
           <hr />
 
           <h3>Quick Booking</h3>
+          <div id="bookingModeHint" class="booking-mode-hint hidden"></div>
           <form id="bookingForm" class="compact-form">
             <label>
               Service
@@ -85,10 +103,14 @@
               <select id="bookingSlot"></select>
             </label>
             <label>
+              Address
+              <input id="bookingAddress" type="text" maxlength="140" placeholder="House no, street, area, city" required />
+            </label>
+            <label>
               Notes
               <input id="bookingNotes" type="text" maxlength="220" placeholder="Access details, preferences" />
             </label>
-            <button class="btn" type="submit">Confirm Booking</button>
+            <button id="bookingSubmitBtn" class="btn" type="submit">Confirm Booking</button>
           </form>
         </article>
 
@@ -106,6 +128,8 @@
             <button id="likeBtn" class="btn btn-like">Like</button>
             <button id="superLikeBtn" class="btn btn-super">Super Like</button>
           </div>
+          <div id="swipeAssist" class="swipe-assist"></div>
+          <div id="swipeWorkspace" class="swipe-workspace"></div>
         </article>
 
         <article class="panel side-panel">
@@ -134,19 +158,160 @@
             </label>
             <button class="btn" type="submit">Submit Review</button>
           </form>
+          <hr />
+          <h3>Review History</h3>
+          <div id="reviewHistoryList" class="booking-list"></div>
         </article>
       </section>
 
-      <section class="panel insights">
-        <h3>Insight Charts</h3>
-        <div class="charts-grid">
-          <canvas id="demandChart" width="460" height="240"></canvas>
-          <canvas id="sustainChart" width="460" height="240"></canvas>
-          <canvas id="categoryChart" width="460" height="240"></canvas>
-          <canvas id="spendChart" width="460" height="240"></canvas>
+      <section class="insight-zone">
+        <aside class="panel section-nav">
+          <h3>Navigate Insights</h3>
+          <a class="section-nav-link" href="#insightCharts">Insight Charts</a>
+          <a class="section-nav-link" href="#visualAnalyticsPanel">Visual Analytics</a>
+          <a class="section-nav-link" href="#providerRatingsPanel">Provider Scorecard</a>
+          <a class="section-nav-link" href="#outcomeBenchmarksPanel">Performance Report Card</a>
+          <a class="section-nav-link" href="#impactReceiptPanel">Impact Receipt</a>
+          <a class="section-nav-link" href="#collaborationCirclesPanel">Task Planner Circle</a>
+        </aside>
+
+        <div class="insight-content">
+          <section id="insightCharts" class="panel insights scroll-target">
+            <div class="insights-head">
+              <h3>Insight Charts</h3>
+              <div class="insight-controls">
+                <label>
+                  View
+                  <select id="insightMode">
+                    <option value="economics">Economics</option>
+                    <option value="carbon">Carbon</option>
+                    <option value="lifestyle">Lifestyle</option>
+                    <option value="providers">Providers</option>
+                  </select>
+                </label>
+                <label>
+                  Window
+                  <select id="chartWindow">
+                    <option value="3">3 months</option>
+                    <option value="6" selected>6 months</option>
+                    <option value="12">12 months</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="charts-grid">
+              <canvas id="demandChart" width="460" height="240"></canvas>
+              <canvas id="sustainChart" width="460" height="240"></canvas>
+              <canvas id="categoryChart" width="460" height="240"></canvas>
+              <canvas id="spendChart" width="460" height="240"></canvas>
+            </div>
+            <div class="insight-panels">
+              <article id="providerRatingsPanel" class="mini-panel scroll-target">
+                <h4>Provider Scorecard</h4>
+                <div class="panel-inline-controls provider-controls">
+                  <label>
+                    Sort
+                    <select id="providerSort">
+                      <option value="score">Score</option>
+                      <option value="reliabilityScore">Reliability</option>
+                      <option value="revenue">Revenue</option>
+                      <option value="jobs">Jobs</option>
+                      <option value="carbonSavedKg">Carbon Saved</option>
+                      <option value="sustainability">Sustainability</option>
+                    </select>
+                  </label>
+                  <label>
+                    Min Reliability
+                    <div class="inline-range-row">
+                      <input id="providerReliabilityMin" type="range" min="0" max="100" value="0" />
+                      <strong id="providerReliabilityMinLabel">0</strong>
+                    </div>
+                  </label>
+                </div>
+                <div id="providerRatings" class="provider-ratings"></div>
+              </article>
+              <article id="outcomeBenchmarksPanel" class="mini-panel scroll-target">
+                <h4>Performance Report Card</h4>
+                <div class="panel-inline-controls benchmark-controls">
+                  <label>
+                    View
+                    <select id="benchmarkView">
+                      <option value="executive">Executive</option>
+                      <option value="diagnostic">Diagnostics</option>
+                    </select>
+                  </label>
+                  <label>
+                    Compare Mode
+                    <select id="benchmarkScenario">
+                      <option value="observed">Now</option>
+                      <option value="stretch">Best Case</option>
+                      <option value="conservative">Safe Estimate</option>
+                    </select>
+                  </label>
+                </div>
+                <div id="outcomeBenchmarks" class="bundle-list"></div>
+              </article>
+            </div>
+
+            <div class="insight-panels single-row">
+              <article id="visualAnalyticsPanel" class="mini-panel scroll-target">
+                <h4>Visual Analytics</h4>
+                <div class="visual-analytics-grid">
+                  <section class="visual-module visual-module-wide">
+                    <h5>Booking Lifecycle Flow</h5>
+                    <div id="bookingFlowDiagram" class="booking-flow-diagram"></div>
+                  </section>
+                  <section class="visual-module">
+                    <h5>Provider Risk Matrix</h5>
+                    <div id="providerRiskMatrix" class="provider-risk-matrix"></div>
+                  </section>
+                  <section class="visual-module">
+                    <h5>Carbon Contribution Map</h5>
+                    <div id="carbonTreemap" class="carbon-treemap"></div>
+                  </section>
+                </div>
+              </article>
+            </div>
+
+            <div class="insight-panels single-row">
+              <article id="impactReceiptPanel" class="mini-panel scroll-target">
+                <h4>Impact Receipt</h4>
+                <div id="impactReceipt" class="muted">Book a service to generate your impact receipt.</div>
+                <h4>Receipt History</h4>
+                <div id="receiptHistoryList" class="bundle-list"></div>
+              </article>
+            </div>
+          </section>
+
+          <section id="providerIntelligence" class="panel advanced-suite scroll-target">
+            <h3>Task Orchestration</h3>
+            <div class="advanced-grid">
+              <article id="collaborationCirclesPanel" class="mini-panel scroll-target">
+                <h4>Task Planner Circle</h4>
+                <p class="muted">Plan from intent, then launch and coordinate the circle in one place.</p>
+                <form id="intentPlannerForm" class="compact-form">
+                  <label>
+                    Describe Your Task
+                    <textarea id="intentInput" rows="4" maxlength="600" placeholder="I need eco-friendly birthday setup with decor, cake, and photos for 40 people next Saturday." required></textarea>
+                  </label>
+                  <button class="btn" type="submit">Generate Plan</button>
+                </form>
+                <div id="intentPlanResult" class="muted">Plan output will appear here.</div>
+                <hr />
+                <h5 class="subhead">Active Task Circles</h5>
+                <small class="muted">Book package and pay directly from each active circle.</small>
+                <div class="circle-layout">
+                  <div id="circleList" class="bundle-list"></div>
+                  <aside class="panel-lite archived-circles-sidebar">
+                    <h5 class="subhead">Archived Circles</h5>
+                    <small class="muted">Previous circles snapshot</small>
+                    <div id="archivedCircleList" class="bundle-list"></div>
+                  </aside>
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
-        <h4>Business Ideas</h4>
-        <ul id="ideasList"></ul>
       </section>
     </main>
   </div>

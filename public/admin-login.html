@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoSwipe | Admin Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Unbounded:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="admin-login.js"></script>
+</head>
+<body class="login-body">
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <div class="bg-grid"></div>
+
+  <main class="login-shell admin-login-shell">
+    <section class="login-hero panel">
+      <div class="brand big-brand">
+        <img src="assets/logo.svg" alt="EcoSwipe logo" class="logo" />
+        <div>
+          <h1 class="brand-title">EcoSwipe</h1>
+          <p>Admin Console Access</p>
+        </div>
+      </div>
+      <h2>Operations, provider analytics, and booking acceptance</h2>
+      <p>
+        This login is separate from customer booking access.
+        Only authorized admin accounts can open the admin module.
+      </p>
+      <div class="hero-pill-row">
+        <span>Booking Acceptance</span>
+        <span>Provider Analytics</span>
+        <span>Operations Control</span>
+      </div>
+      <a href="/" class="btn btn-ghost">Back to User Login</a>
+    </section>
+
+    <section class="panel auth-panel">
+      <form id="adminLoginForm" class="auth-form-page">
+        <h3>Admin Login</h3>
+        <p>Use your admin email credentials.</p>
+        <input id="adminEmailInput" type="email" placeholder="Admin Email" required />
+        <input id="adminPasswordInput" type="password" placeholder="Password" required />
+        <button class="btn" type="submit">Login to Admin</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+</body>
+</html>
+

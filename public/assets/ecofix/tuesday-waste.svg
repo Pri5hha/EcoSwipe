@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">Tuesday Street Waste Management</title>
+  <desc id="desc">Chennai street scene with waste-management issues highlighted.</desc>
+  <rect width="1200" height="700" fill="#ecfccb" />
+  <rect x="0" y="460" width="1200" height="240" fill="#334155" />
+  <rect x="70" y="110" width="240" height="260" fill="#f8fafc" stroke="#334155" />
+  <rect x="330" y="130" width="260" height="240" fill="#f1f5f9" stroke="#334155" />
+  <rect x="620" y="95" width="220" height="275" fill="#f8fafc" stroke="#334155" />
+  <rect x="870" y="125" width="260" height="245" fill="#f1f5f9" stroke="#334155" />
+  <rect x="98" y="385" width="90" height="70" rx="8" fill="#cbd5e1" />
+  <rect x="198" y="385" width="90" height="70" rx="8" fill="#cbd5e1" />
+  <polygon points="520,430 560,380 600,430" fill="#f97316" />
+  <rect x="760" y="400" width="90" height="55" fill="#a3a3a3" />
+  <rect x="860" y="400" width="90" height="55" fill="#a3a3a3" />
+  <rect x="430" y="270" width="60" height="95" fill="#f59e0b" />
+  <rect x="445" y="250" width="30" height="20" fill="#fbbf24" />
+  <rect x="440" y="42" width="330" height="54" rx="10" fill="#065f46" />
+  <text x="605" y="77" text-anchor="middle" font-size="24" font-family="Arial" fill="#fff">EcoFix: Chennai Street</text>
+  <text x="80" y="665" font-size="20" font-family="Arial" fill="#166534">Tamil signboard zone | Waste load: 3x nearby streets</text>
+
+  <!-- Callouts rendered last so labels remain readable -->
+  <circle cx="300" cy="405" r="14" fill="#ef4444" />
+  <line x1="314" y1="405" x2="330" y2="405" stroke="#ef4444" stroke-width="3" />
+  <rect x="330" y="382" width="210" height="44" rx="10" fill="#fff1f2" stroke="#ef4444" />
+  <text x="345" y="410" font-size="24" font-family="Arial" fill="#7f1d1d">No segregation</text>
+
+  <circle cx="612" cy="401" r="14" fill="#ef4444" />
+  <line x1="626" y1="401" x2="640" y2="401" stroke="#ef4444" stroke-width="3" />
+  <rect x="640" y="378" width="190" height="44" rx="10" fill="#fff1f2" stroke="#ef4444" />
+  <text x="655" y="406" font-size="24" font-family="Arial" fill="#7f1d1d">Open burning</text>
+
+  <circle cx="962" cy="417" r="14" fill="#ef4444" />
+  <line x1="976" y1="417" x2="994" y2="417" stroke="#ef4444" stroke-width="3" />
+  <rect x="994" y="394" width="188" height="44" rx="10" fill="#fff1f2" stroke="#ef4444" />
+  <text x="1008" y="422" font-size="21" font-family="Arial" fill="#7f1d1d">No composting</text>
+
+  <circle cx="502" cy="286" r="13" fill="#ef4444" />
+  <polyline points="515,286 532,256 545,256" fill="none" stroke="#ef4444" stroke-width="3" />
+  <rect x="545" y="234" width="322" height="44" rx="10" fill="#fff1f2" stroke="#ef4444" />
+  <text x="560" y="262" font-size="22" font-family="Arial" fill="#7f1d1d">Plastic packaging vendor</text>
+</svg>

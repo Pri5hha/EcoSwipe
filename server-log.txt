@@ -1,0 +1,5 @@
+
+> on-demand-service-platform@1.0.0 dev
+> node server/index.js
+
+EcoSwipe running at http://localhost:3002

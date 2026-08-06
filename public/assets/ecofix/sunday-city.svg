@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">Sunday City Infrastructure</title>
+  <desc id="desc">Top-down city junction with emission-heavy bottlenecks.</desc>
+  <rect width="1200" height="700" fill="#e0f2fe" />
+  <rect x="0" y="250" width="1200" height="200" fill="#334155" />
+  <rect x="470" y="0" width="260" height="700" fill="#334155" />
+  <rect x="0" y="330" width="1200" height="40" fill="#94a3b8" />
+  <rect x="580" y="0" width="40" height="700" fill="#94a3b8" />
+  <circle cx="600" cy="350" r="125" fill="#475569" stroke="#cbd5e1" stroke-width="4" />
+  <rect x="566" y="316" width="68" height="68" fill="#facc15" />
+  <text x="572" y="360" font-size="14" font-family="Arial" fill="#1e293b">Signal</text>
+  <circle cx="648" cy="299" r="14" fill="#ef4444" />
+  <text x="670" y="305" font-size="18" font-family="Arial" fill="#7f1d1d">Long timing</text>
+  <rect x="120" y="285" width="220" height="20" fill="#22c55e" />
+  <circle cx="350" cy="296" r="14" fill="#ef4444" />
+  <text x="370" y="302" font-size="18" font-family="Arial" fill="#7f1d1d">No cycle lane</text>
+  <rect x="870" y="385" width="230" height="20" fill="#a3a3a3" />
+  <circle cx="1110" cy="396" r="14" fill="#ef4444" />
+  <text x="822" y="436" font-size="18" font-family="Arial" fill="#7f1d1d">Broken pedestrian path</text>
+  <circle cx="280" cy="540" r="26" fill="#16a34a" />
+  <circle cx="330" cy="575" r="26" fill="#16a34a" />
+  <circle cx="385" cy="542" r="26" fill="#16a34a" />
+  <circle cx="430" cy="575" r="26" fill="#16a34a" />
+  <circle cx="470" cy="550" r="14" fill="#ef4444" />
+  <text x="492" y="556" font-size="18" font-family="Arial" fill="#7f1d1d">Poor tree cover</text>
+  <rect x="905" y="130" width="170" height="80" fill="#1d4ed8" />
+  <text x="930" y="177" font-size="20" font-family="Arial" fill="#fff">EV Charge</text>
+  <circle cx="1088" cy="148" r="14" fill="#ef4444" />
+  <text x="897" y="236" font-size="18" font-family="Arial" fill="#7f1d1d">No EV charging network</text>
+  <rect x="295" y="40" width="610" height="44" rx="9" fill="#0f766e" />
+  <text x="333" y="69" font-size="24" font-family="Arial" fill="#fff">EcoFix Chennai Junction Emissions Challenge</text>
+</svg>

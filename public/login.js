@@ -70,15 +70,8 @@ async function submitAuth(e) {
   window.location.href = '/app';
 }
 
-async function init() {
-  try {
-    await api('/api/auth/me');
-    window.location.href = '/app';
-    return;
-  } catch {
-    setMode(true);
-  }
-
+function init() {
+  setMode(true);
   els.switchModeBtn.addEventListener('click', () => setMode(!state.registerMode));
   els.authForm.addEventListener('submit', (e) => {
     submitAuth(e).catch((err) => showToast(err.message));

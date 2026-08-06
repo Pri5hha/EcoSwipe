@@ -1,0 +1,67 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoSwipe | Database View</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Unbounded:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="database.js"></script>
+</head>
+<body class="app-body">
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <header class="topbar panel">
+      <div class="brand">
+        <img src="assets/logo.svg" alt="EcoSwipe logo" class="logo" />
+        <div>
+          <h1 class="brand-title">EcoSwipe</h1>
+          <p>Database Inspector</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <a href="/app" class="btn btn-ghost">Back to App</a>
+        <a href="/payment" class="btn btn-ghost">Payments</a>
+        <button id="logoutBtn" class="btn btn-ghost">Log Out</button>
+      </div>
+    </header>
+
+    <main class="wide-main">
+      <section class="panel">
+        <h2>All Platform Details</h2>
+        <div id="kpiGrid" class="kpi-grid"></div>
+      </section>
+
+      <section class="data-grid">
+        <article class="panel">
+          <h3>Users</h3>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Created</th><th>Accent</th></tr></thead><tbody id="usersRows"></tbody></table></div>
+        </article>
+        <article class="panel">
+          <h3>Swipes</h3>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>User</th><th>Service</th><th>Action</th><th>Created</th></tr></thead><tbody id="swipesRows"></tbody></table></div>
+        </article>
+        <article class="panel">
+          <h3>Bookings</h3>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>User</th><th>Service</th><th>Date</th><th>Slot</th><th>Status</th><th>Payment</th></tr></thead><tbody id="bookingsRows"></tbody></table></div>
+        </article>
+        <article class="panel">
+          <h3>Reviews</h3>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>User</th><th>Booking</th><th>Service</th><th>Rating</th><th>Comment</th></tr></thead><tbody id="reviewsRows"></tbody></table></div>
+        </article>
+        <article class="panel">
+          <h3>Payments</h3>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>User</th><th>Booking</th><th>Amount</th><th>Method</th><th>Transaction</th><th>Paid At</th></tr></thead><tbody id="paymentsRows"></tbody></table></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoSwipe | App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Unbounded:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="app.js"></script>
+</head>
+<body class="app-body">
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <header class="topbar panel">
+      <div class="brand">
+        <img src="assets/logo.svg" alt="EcoSwipe logo" class="logo" />
+        <div>
+          <h1 class="brand-title">EcoSwipe</h1>
+          <p id="welcomeText">Welcome</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span class="badge-chip">Impact-first Marketplace</span>
+        <button id="logoutBtn" class="btn btn-ghost">Log Out</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="panel hero">
+        <h2>Swipe to find services that match your values and schedule</h2>
+        <div class="stats-strip">
+          <div><span id="metricSwipes">0</span><small>Swipes</small></div>
+          <div><span id="metricBookings">0</span><small>Bookings</small></div>
+          <div><span id="metricCarbon">0kg</span><small>Carbon Saved</small></div>
+          <div><span id="metricSpend">$0</span><small>Total Spend</small></div>
+          <div><span id="metricRating">0.0</span><small>Avg Rating</small></div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <article class="panel controls-panel">
+          <h3>Match Preferences</h3>
+          <label>
+            Eco Priority: <span id="ecoPriorityLabel">70</span>
+            <input id="ecoPriority" type="range" min="0" max="100" value="70" />
+          </label>
+          <label>
+            Budget Cap: <span id="budgetLabel">$150</span>
+            <input id="budgetCap" type="range" min="20" max="500" value="150" />
+          </label>
+          <label class="toggle-row">
+            <span>Urgency Mode</span>
+            <input id="urgencyMode" type="checkbox" />
+          </label>
+          <label>
+            Accent Theme
+            <select id="accentTheme">
+              <option value="sunset">Sunset Pulse</option>
+              <option value="mint">Mint Burst</option>
+              <option value="ocean">Ocean Spark</option>
+              <option value="ember">Ember Drive</option>
+            </select>
+          </label>
+          <button id="savePrefsBtn" class="btn">Save Preferences</button>
+
+          <hr />
+
+          <h3>Quick Booking</h3>
+          <form id="bookingForm" class="compact-form">
+            <label>
+              Service
+              <select id="bookingService"></select>
+            </label>
+            <label>
+              Date
+              <input id="bookingDate" type="date" required />
+            </label>
+            <label>
+              Slot
+              <select id="bookingSlot"></select>
+            </label>
+            <label>
+              Notes
+              <input id="bookingNotes" type="text" maxlength="220" placeholder="Access details, preferences" />
+            </label>
+            <button class="btn" type="submit">Confirm Booking</button>
+          </form>
+        </article>
+
+        <article class="panel swipe-panel">
+          <div class="swipe-header">
+            <h3>Swipe Deck</h3>
+            <p>Drag right to like, left to skip, up for superlike. <strong id="deckCount">0 cards</strong></p>
+          </div>
+          <div class="card-stage">
+            <div id="emptyState" class="empty-state hidden">No cards left. Tune preferences to refresh.</div>
+            <div id="cardStack" class="card-stack"></div>
+          </div>
+          <div class="swipe-actions">
+            <button id="skipBtn" class="btn btn-skip">Skip</button>
+            <button id="likeBtn" class="btn btn-like">Like</button>
+            <button id="superLikeBtn" class="btn btn-super">Super Like</button>
+          </div>
+        </article>
+
+        <article class="panel side-panel">
+          <h3>Your Bookings</h3>
+          <div id="bookingList" class="booking-list"></div>
+          <hr />
+          <h3>Leave a Review</h3>
+          <form id="reviewForm" class="compact-form">
+            <label>
+              Booking
+              <select id="reviewBooking"></select>
+            </label>
+            <label>
+              Rating
+              <select id="reviewRating">
+                <option value="5">5 - Excellent</option>
+                <option value="4">4 - Great</option>
+                <option value="3">3 - Good</option>
+                <option value="2">2 - Fair</option>
+                <option value="1">1 - Poor</option>
+              </select>
+            </label>
+            <label>
+              Comment
+              <input id="reviewComment" type="text" minlength="5" maxlength="260" placeholder="Share your service experience" required />
+            </label>
+            <button class="btn" type="submit">Submit Review</button>
+          </form>
+        </article>
+      </section>
+
+      <section class="panel insights">
+        <h3>Insight Charts</h3>
+        <div class="charts-grid">
+          <canvas id="demandChart" width="460" height="240"></canvas>
+          <canvas id="sustainChart" width="460" height="240"></canvas>
+          <canvas id="categoryChart" width="460" height="240"></canvas>
+          <canvas id="spendChart" width="460" height="240"></canvas>
+        </div>
+        <h4>Business Ideas</h4>
+        <ul id="ideasList"></ul>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+</body>
+</html>

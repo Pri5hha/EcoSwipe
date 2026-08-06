@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoSwipe | Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Unbounded:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="login.js"></script>
+</head>
+<body class="login-body">
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <div class="bg-grid"></div>
+
+  <main class="login-shell">
+    <section class="login-hero panel">
+      <div class="brand big-brand">
+        <img src="assets/logo.svg" alt="EcoSwipe logo" class="logo" />
+        <div>
+          <h1 class="brand-title">EcoSwipe</h1>
+          <p>Swipe. Book. Sustain.</p>
+        </div>
+      </div>
+      <h2>On-demand services with a smarter impact layer</h2>
+      <p>
+        Book trusted providers through swipe discovery while tracking carbon savings,
+        spending trends, and service quality.
+      </p>
+      <div class="hero-pill-row">
+        <span>Swipe Matching</span>
+        <span>Smart Booking</span>
+        <span>Live Insights</span>
+        <span>Eco Metrics</span>
+      </div>
+    </section>
+
+    <section class="panel auth-panel">
+      <form id="authForm" class="auth-form-page">
+        <h3 id="authTitle">Create Account</h3>
+        <p id="authHint">Password must include uppercase, lowercase, number, and symbol.</p>
+        <input id="nameInput" type="text" placeholder="Full Name" minlength="2" maxlength="40" />
+        <input id="emailInput" type="email" placeholder="Email" required />
+        <input id="passwordInput" type="password" placeholder="Password" required />
+        <button class="btn" id="submitBtn" type="submit">Register</button>
+        <button class="btn btn-ghost" id="switchModeBtn" type="button">Switch to Login</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+</body>
+</html>
